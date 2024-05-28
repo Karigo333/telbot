@@ -1,67 +1,81 @@
-import { createCanvas, loadImage, registerFont } from 'canvas';
+import { createCanvas, loadImage } from 'canvas';
 import fs from 'fs';
 import axios from 'axios';
-import sharp from 'sharp';
-import fetch from 'node-fetch';
 import TelegramApi from 'node-telegram-bot-api';
-
 
 const TOKEN_BOT = '6823327756:AAFundEVfZ2-qsvvXBgUt1RL8CLkzbFpdm0';
 const bot = new TelegramApi(TOKEN_BOT, { polling: true });
-const API_URL = 'https://fortnite-api.com/v2/shop/br?language=ru';
+const apiUrl = 'https://fortnite-api.com/v2/shop/br?language=ru';
+const HEADER_TEXT = '@fortniteposter_bot';
 const BACKGROUND_IMAGE_PATH = './background.jpg';
 const chatId = '-1001438227338';
-let currentDate = ''; 
-let dailyEntries = ''; 
-let vbuckIcon = ''; 
 
+let currentDate; 
+let dailyEntries; 
+let vbuckIcon;
+let firstColor;
+let secondColor;
+let length;
 
 async function fetchShopData() {
     try {
-        const response = await axios.get(API_URL);
+        const response = await axios.get(apiUrl);
         dailyEntries = response.data.data.date;
         vbuckIcon = response.data.data.vbuckIcon;
+        length = response.data.data.featured.entries.length;
         return response.data.data;
     } catch (error) {
         console.error('Error fetching data:', error);
     }
 }
 
-let firstColor;
-let secondColor;
 
 function setBackgroundColor(rarity) {
     switch(rarity) {
         case 'epic': 
-            firstColor = '#CB91D9';
-            secondColor = '#7A318C';
+            firstColor = '#F4C2FF'; //violet
+            secondColor = '#9400D3';
             break;
       
         case 'icon':
-            firstColor = '#85F8FF';
+            firstColor = '#85F8FF'; //sky
             secondColor = '#1ABFFF';
           break;
         case 'uncommon':
-            firstColor = '#A0DE96';
+            firstColor = '#A0DE96';  //green
             secondColor = '#38B027';
           break;
         case 'legendary':
-            firstColor = '#EAC8AE';
+            firstColor = '#EAC8AE'; //orange
             secondColor = '#C47436';
           break;
         default:
-            firstColor = '#99A8FF';
-            secondColor = '#364496';
+            firstColor = '#9C9FF2'; //blue
+            secondColor = '#2A52BE';
           break;
       }
 }
 
 async function createShopImage(shopData) {
 
-    const canvasWidth = 3600;
-    const canvasHeight = 4800;
-    // const canvasWidth = 3000;
-    // const canvasHeight = 4000;
+
+    //name bot
+    const textX = 50;
+    const textY = 100;
+
+    // image settings
+    const itemWidth = 500;
+    const itemHeight = 500;
+    const margin = 40;
+    let x = margin;
+    let y = textY + 50;
+    const bottomMargin = 25;
+
+    let canvasWidth = 4400;
+    let rows = Math.ceil(length / 8);
+    let canvasHeight = 650 * rows;
+
+    
     const canvas = createCanvas(canvasWidth, canvasHeight);
     const ctx = canvas.getContext('2d');
 
@@ -73,39 +87,12 @@ async function createShopImage(shopData) {
         return;
     }    
 
-    const headerText = '@fortniteposter_bot';
-    const textX = 50;
-    const textY = 140;
     ctx.fillStyle = '#ffffff';
     ctx.font = 'bold 100px tahoma';
-    ctx.fillText(headerText, textX, textY);
+    ctx.fillText(HEADER_TEXT, textX, textY);
+
 
     
-    const itemWidth = 400;
-    const itemHeight = 400;
-    const margin = 40;
-    let x = margin;
-    let y = textY + 40;
-    const bottomMargin = 25;
-    
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     for (const item of shopData.featured.entries) {
         if (item.bundle && item.bundle.image) {
             const imageUrl = item.bundle.image;
@@ -143,55 +130,71 @@ async function createShopImage(shopData) {
                     console.error('Error loading image:', error);
                 }
             };
+
+            const drawSkewedRectangle = (ctx, x, y, width, height) => {
+                const arrowWidth = 10;
+                ctx.beginPath();
+                ctx.moveTo(x - arrowWidth, y);
+                ctx.lineTo(x + width - height / 2 - arrowWidth, y);
+                ctx.lineTo(x + width - arrowWidth, y + height / 2);
+                ctx.lineTo(x + width - height / 2 - arrowWidth, y + height);
+                ctx.lineTo(x, y + height);
+                ctx.closePath();
+            };
         
             try {
                 await applyImageEffects(imageUrl, x, y, itemWidth, itemHeight);
 
                 
+                ctx.font = 'bold 28px Tahoma';
+                sale = sale.toUpperCase();
+                let textMetrics = ctx.measureText(sale);
+                let textWidth = textMetrics.width;
+                const textHeight = 50;
+                const padding = 20;
 
-                // Draw text background with skewed rectangle and arrow shape
+                // Adjust dimensions based on text size
+                const textRectWidth = textWidth + padding * 2;
                 const textX = x - 10;
                 const textYPosition = y - 20;
-                const textWidth = itemWidth - 40;
-                const textHeight = 50;
 
                 // Create skewed rectangle with arrow shape
-                ctx.beginPath();
-                ctx.moveTo(textX - 10, textYPosition);
-                ctx.lineTo(textX + textWidth - textHeight / 2, textYPosition);
-                ctx.lineTo(textX + textWidth, textYPosition + textHeight / 2);
-                ctx.lineTo(textX + textWidth - textHeight / 2, textYPosition + textHeight);
-                ctx.lineTo(textX, textYPosition + textHeight);
-                ctx.closePath();
-        
+                drawSkewedRectangle(ctx, textX, textYPosition, textRectWidth, textHeight);
+
                 // Create radial gradient
-                ctx.fillStyle = '#FD7B7C';
+                ctx.fillStyle = '#FF5349';
                 ctx.fill();
-    
+
                 // Draw text border
                 ctx.strokeStyle = 'white';
                 ctx.lineWidth = 4; // Smaller line width
                 ctx.stroke();
-    
+
                 // Draw text
                 ctx.fillStyle = 'white';
-                ctx.font = 'bold 26px Tahoma'; // Change font to monospace
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
-                ctx.fillText(sale.toUpperCase(), textX + textWidth / 2 - 10, textYPosition + textHeight / 2);
+                ctx.fillText(sale, textX + textRectWidth / 2 - 10, textYPosition + textHeight / 2);
 
+                const line = 20;
+                ctx.beginPath();
+                ctx.moveTo(x, y + itemHeight - 6);
+                ctx.lineTo(x + itemWidth, y + itemHeight - 20);
+                ctx.lineTo(x + itemWidth, y + itemHeight + line);
+                ctx.lineTo(x, y + itemHeight + line);
+                ctx.closePath();
+                ctx.fillStyle = firstColor;
+                ctx.fill();
+                
                 // Draw additional gray rectangle under the image
                 const rectHeight = 40;
-                const skewHeight = 10; // Height of the skew at the top right
-
                 ctx.beginPath();
-                ctx.moveTo(x, y + itemHeight + 2); // Bottom-left corner of the image
-                ctx.lineTo(x + itemWidth, y + itemHeight - 12); // Right point of the skewed rectangle
-                ctx.lineTo(x + itemWidth, y + itemHeight + rectHeight); // Right bottom point
-                ctx.lineTo(x, y + itemHeight + rectHeight); // Left bottom point
+                ctx.moveTo(x, y + itemHeight + 2);
+                ctx.lineTo(x + itemWidth, y + itemHeight - 12);
+                ctx.lineTo(x + itemWidth, y + itemHeight + rectHeight);
+                ctx.lineTo(x, y + itemHeight + rectHeight);
                 ctx.closePath();
-
-                ctx.fillStyle = 'gray';
+                ctx.fillStyle = '#525252';
                 ctx.fill();
 
                 function getMaxFontSize(text, maxWidth, initialFontSize, ctx) {
@@ -205,6 +208,7 @@ async function createShopImage(shopData) {
                 }
 
                 // Calculate maximum font size for the text
+                textWidth = itemWidth - 40;
                 const maxFontSize = getMaxFontSize(name, textWidth - 50, 40, ctx);
                 ctx.fillStyle = 'white';
                 ctx.font = `bold ${maxFontSize}px tahoma`;
@@ -214,8 +218,8 @@ async function createShopImage(shopData) {
 
 
                 // Draw another gray rectangle under the first one
-                const secondRectHeight = 30; // Adjust height as necessary
-                ctx.fillStyle = '#454545';
+                const secondRectHeight = 30;
+                ctx.fillStyle = '#0D0D0D';
                 ctx.fillRect(x, y + itemHeight + rectHeight, itemWidth, secondRectHeight);
 
 
@@ -226,24 +230,37 @@ async function createShopImage(shopData) {
                 
                     const lastDate = new Date(shopHistory[shopHistory.length - 1]);
                     const today = new Date();
+
+                    let day;
+                    let days;
+
+                    if (apiUrl === 'https://fortnite-api.com/v2/shop/br?language=ru') {
+                        day = 'ДЕНЬ';
+                        days = 'ДНЕЙ';
+                    }
+                    else {
+                        day = 'DAY';
+                        days = 'DAYS';
+                    }
                 
                     if (shopHistory.length === 1) {
                         const timeDifference = today.getTime() - lastDate.getTime();
                         const daysDifference = Math.round(timeDifference / (1000 * 60 * 60 * 24));
                         if (daysDifference == 1) {
-                            return `${daysDifference} ДЕНЬ`;
+                            return `${daysDifference} ${day}`;
                         }
-                        return `${daysDifference} ДНЯ`;
+                        return `${daysDifference} ${days}`;
                     }
                 
                     const secondLastDate = new Date(shopHistory[shopHistory.length - 2]);
                     const timeDifference = lastDate.getTime() - secondLastDate.getTime();
                     const daysDifference = Math.round(timeDifference / (1000 * 60 * 60 * 24));
+
                 
                     if (daysDifference == 1) {
-                        return `${daysDifference} ДЕНЬ`;
+                        return `${daysDifference} ${day}`;
                     }
-                    return `${daysDifference} ДНЯ`;
+                    return `${daysDifference} ${days}`;
                 }
 
                 let dateDifference = getDaysDifference(shopHistory);
@@ -251,45 +268,43 @@ async function createShopImage(shopData) {
 
                 if (dateDifference) {
                     ctx.fillStyle = 'white';
-                    ctx.font = 'bold 24px tahoma'; // Change font to monospace
+                    ctx.font = 'bold 26px tahoma';
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
-                    const priceTextX = x + itemWidth / 2 - 140;
+                    const priceTextX = x + itemWidth / 6;
                     const priceTextY = y + itemHeight + rectHeight + secondRectHeight / 2;
                     ctx.fillText(dateDifference, priceTextX, priceTextY);
                 }
 
                 if (regularPrice > finalPrice) {
                     ctx.fillStyle = '#999999';
-                    ctx.font = 'bold 24px tahoma'; // Change font to monospace
+                    ctx.font = 'bold 26px tahoma';
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
-                    const priceTextX = x + itemWidth / 2 + 10;
+                    const priceTextX = x + itemWidth / 1.6;
                     const priceTextY = y + itemHeight + rectHeight + secondRectHeight / 2;
                     ctx.fillText(regularPrice, priceTextX, priceTextY);
     
                     // Draw diagonal strike-through line from top-left to bottom-right of the text
                     const textWidthMeasured = ctx.measureText(regularPrice).width;
                     ctx.strokeStyle = 'white';
-                    ctx.lineWidth = 2;
+                    ctx.lineWidth = 1;
                     ctx.beginPath();
-                    ctx.moveTo(priceTextX - textWidthMeasured / 2, priceTextY + 5); // Start slightly below the text
-                    ctx.lineTo(priceTextX + textWidthMeasured / 2, priceTextY - 5); // End slightly below the text
+                    ctx.moveTo(priceTextX - textWidthMeasured / 2, priceTextY + 5);
+                    ctx.lineTo(priceTextX + textWidthMeasured / 2, priceTextY - 5);
                     ctx.stroke();
                 }
 
                 // Replace with the desired text
                 ctx.fillStyle = 'white';
-                ctx.font = 'bold 24px tahoma'; // Change font to monospace
+                ctx.font = 'bold 26px tahoma';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
-                ctx.fillText(finalPrice, x + itemWidth / 2 + 90, y + itemHeight + rectHeight + secondRectHeight / 2);
+                ctx.fillText(finalPrice, x + itemWidth - 110, y + itemHeight + rectHeight + secondRectHeight / 2);
 
                 const vbuck = await loadImage(vbuckIcon);
-                ctx.drawImage(vbuck, x + itemWidth / 2 + 140, y + itemHeight + rectHeight + secondRectHeight / 2 - 20, 50, 50);
+                ctx.drawImage(vbuck, x + itemWidth - 60, y + itemHeight + rectHeight + secondRectHeight / 2 - 20, 50, 50);
 
-                
-    
             } catch (error) {
                 console.error('Error loading image:', error);
             }
@@ -303,14 +318,6 @@ async function createShopImage(shopData) {
     
     
 
-
-
-
-
-
-
-
-
         //ALL ELSE
         if (item.bundle === null && item.items[0].images) {
             const finalPrice = item.finalPrice;
@@ -319,14 +326,23 @@ async function createShopImage(shopData) {
             const regularPrice = item.regularPrice;
             const shopHistory = item.items[0].shopHistory;
             const rarity = item.items[0].rarity.value;
+            let options;
 
 
             if(item.items[0].images.featured) {
                 imageUrl = item.items[0].images.featured;
+                if (item.items[1] && item.items[1].images) {
+                    options = (item.items[1].images) ? item.items[1].images.smallIcon : item.items[1].images.icon;
+                }
             }
             if (!item.items[0].images.featured && item.items[0].images.icon) {
                 imageUrl = item.items[0].images.icon;
+                if (item.items[1] && item.items[1].images) {
+                    options = (item.items[1].images) ? item.items[1].images.smallIcon : item.items[1].images.icon;
+                }
             }
+
+
 
 
             const applyImageEffects = async (imagePath, x, y, width, height) => {
@@ -362,17 +378,24 @@ async function createShopImage(shopData) {
                 const textWidth = itemWidth - 40;
                 const textHeight = 50;
                 const rectHeight = 40;
-                const skewHeight = 10; // Height of the skew at the top right
+
+                const line = 20;
+                ctx.beginPath();
+                ctx.moveTo(x, y + itemHeight - 6);
+                ctx.lineTo(x + itemWidth, y + itemHeight - 20);
+                ctx.lineTo(x + itemWidth, y + itemHeight + line);
+                ctx.lineTo(x, y + itemHeight + line);
+                ctx.closePath();
+                ctx.fillStyle = firstColor;
+                ctx.fill();
 
                 ctx.beginPath();
                 ctx.moveTo(x, y + itemHeight + 2); // Bottom-left corner of the image
-                // ctx.lineTo(x + itemWidth - skewHeight, y + itemHeight); // Bottom-right point before the skew
                 ctx.lineTo(x + itemWidth, y + itemHeight - 12); // Right point of the skewed rectangle
                 ctx.lineTo(x + itemWidth, y + itemHeight + rectHeight); // Right bottom point
                 ctx.lineTo(x, y + itemHeight + rectHeight); // Left bottom point
                 ctx.closePath();
-
-                ctx.fillStyle = 'gray';
+                ctx.fillStyle = '#525252';
                 ctx.fill();
 
 
@@ -380,13 +403,13 @@ async function createShopImage(shopData) {
                 function getMaxFontSize(text, maxWidth, initialFontSize, ctx) {
                     let fontSize = initialFontSize;
                     ctx.font = `${fontSize}px monospace`;
-                    while (ctx.measureText(text).width > maxWidth && fontSize > 10) {
+                    while (ctx.measureText(text).width > maxWidth && fontSize > 20) {
                         fontSize -= 1;
                         ctx.font = `${fontSize}px monospace`;
                     }
                     return fontSize;
                 }
-                const maxFontSize = getMaxFontSize(name, textWidth - 50, 26, ctx);
+                const maxFontSize = getMaxFontSize(name, textWidth - 50, 40, ctx);
                 ctx.fillStyle = 'white';
                 ctx.font = `bold ${maxFontSize}px tahoma`;
                 ctx.textAlign = 'center';
@@ -395,8 +418,8 @@ async function createShopImage(shopData) {
 
 
                 // Draw another gray rectangle under the first one
-                const secondRectHeight = 30; // Adjust height as necessary
-                ctx.fillStyle = '#454545';
+                const secondRectHeight = 30;
+                ctx.fillStyle = '#0D0D0D';
                 ctx.fillRect(x, y + itemHeight + rectHeight, itemWidth, secondRectHeight);
 
 
@@ -407,23 +430,37 @@ async function createShopImage(shopData) {
                 
                     const lastDate = new Date(shopHistory[shopHistory.length - 1]);
                     const today = new Date();
+
+                    let day;
+                    let days;
+
+                    if (apiUrl === 'https://fortnite-api.com/v2/shop/br?language=ru') {
+                        day = 'ДЕНЬ';
+                        days = 'ДНЕЙ';
+                    }
+                    else {
+                        day = 'DAY';
+                        days = 'DAYS';
+                    }
                 
                     if (shopHistory.length === 1) {
                         const timeDifference = today.getTime() - lastDate.getTime();
                         const daysDifference = Math.round(timeDifference / (1000 * 60 * 60 * 24));
                         if (daysDifference == 1) {
-                            return `${daysDifference} ДЕНЬ`;
+                            return `${daysDifference} ${day}`;
                         }
-                        return `${daysDifference} ДНЯ`;
+                        return `${daysDifference} ${days}`;
                     }
                 
                     const secondLastDate = new Date(shopHistory[shopHistory.length - 2]);
                     const timeDifference = lastDate.getTime() - secondLastDate.getTime();
                     const daysDifference = Math.round(timeDifference / (1000 * 60 * 60 * 24));
+
+                
                     if (daysDifference == 1) {
-                        return `${daysDifference} ДЕНЬ`;
+                        return `${daysDifference} ${day}`;
                     }
-                    return `${daysDifference} ДНЯ`;
+                    return `${daysDifference} ${days}`;
                 }
 
                 let dateDifference = getDaysDifference(shopHistory);
@@ -431,10 +468,10 @@ async function createShopImage(shopData) {
 
                 if (dateDifference) {
                     ctx.fillStyle = 'white';
-                    ctx.font = 'bold 24px tahoma'; // Change font to monospace
+                    ctx.font = 'bold 26px tahoma';
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
-                    const priceTextX = x + itemWidth / 2 - 140;
+                    const priceTextX = x + itemWidth / 6;
                     const priceTextY = y + itemHeight + rectHeight + secondRectHeight / 2;
                     ctx.fillText(dateDifference, priceTextX, priceTextY);
                 }
@@ -461,13 +498,18 @@ async function createShopImage(shopData) {
 
                 // Replace with the desired text
                 ctx.fillStyle = 'white';
-                ctx.font = 'bold 24px tahoma'; // Change font to monospace
+                ctx.font = 'bold 26px tahoma';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
-                ctx.fillText(finalPrice, x + itemWidth / 2 + 90, y + itemHeight + rectHeight + secondRectHeight / 2);
+                ctx.fillText(finalPrice, x + itemWidth - 110, y + itemHeight + rectHeight + secondRectHeight / 2);
 
                 const vbuck = await loadImage(vbuckIcon);
-                ctx.drawImage(vbuck, x + itemWidth / 2 + 140, y + itemHeight + rectHeight + secondRectHeight / 2 - 20, 50, 50);
+                ctx.drawImage(vbuck, x + itemWidth - 60, y + itemHeight + rectHeight + secondRectHeight / 2 - 20, 50, 50);
+
+                if (options) {
+                    const optionImage = await loadImage(options);
+                    ctx.drawImage(optionImage, x, y, 150, 150);
+                }
 
             } catch (error) {
                 console.error('Error loading image:', error);
@@ -476,7 +518,7 @@ async function createShopImage(shopData) {
             x += itemWidth + margin;
             if (x + itemWidth + margin > canvasWidth) {
                 x = margin;
-                y += itemHeight + margin + 40 + bottomMargin; // Добавить высоту прямоугольника и отступ
+                y += itemHeight + margin + 40 + bottomMargin; // Добавить высоту картинки и отступ
             }
         }
     }
@@ -516,6 +558,8 @@ async function sendTelegramPhoto(imagePath) {
         month: 'long',
         day: 'numeric'
     };
+
+
     currentDate = date.toLocaleDateString('ru-RU', options);
     const caption = `🛒 Магазин предметов обновлён!\n📅 ${currentDate}\n\n🎁 Получить в-баксы или наборы: @wockeez23\n\n✅Больше 10.000 отзывов: @wockeez23`;
     try {
